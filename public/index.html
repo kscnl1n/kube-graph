@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K8s YAML Graph Tool</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="https://unpkg.com/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <h1>Kubernetes YAML Dependency Graph</h1>
+        <p>
+          Upload one or more YAML files and get a rough dependency graph here.
+        </p>
+      </header>
+
+      <section class="panel">
+        <label for="yamlFiles" class="label">Select YAML files:</label>
+        <input id="yamlFiles" type="file" accept=".yaml,.yml,text/yaml,text/x-yaml" multiple />
+        <div class="button-row">
+          <button id="buildGraphBtn">Build Graph</button>
+          <button id="sampleBtn">Load Sample YAML</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <label for="yamlText" class="label">Or paste YAML here:</label>
+        <textarea
+          id="yamlText"
+          rows="12"
+          placeholder="Paste one or more Kubernetes manifests separated with ---"
+        ></textarea>
+      </section>
+
+      <section class="stats-row">
+        <span id="nodeCount">Nodes: 0</span>
+        <span id="edgeCount">Edges: 0</span>
+        <span id="docCount">Resources: 0</span>
+      </section>
+
+      <section class="panel graph-wrap">
+        <div id="graph"></div>
+      </section>
+
+      <section class="panel">
+        <h3>Detected Dependencies</h3>
+        <pre id="dependencyList">None yet.</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+    <p class="secret-fungus">secret button</p>
+  </body>
+  </html>
