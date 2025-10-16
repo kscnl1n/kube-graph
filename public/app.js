@@ -3,6 +3,8 @@ const yamlText = document.getElementById("yamlText");
 const buildGraphBtn = document.getElementById("buildGraphBtn");
 const sampleBtn = document.getElementById("sampleBtn");
 const clearBtn = document.getElementById("clearBtn");
+const exportPngBtn = document.getElementById("exportPngBtn");
+const exportSvgBtn = document.getElementById("exportSvgBtn");
 
 
 // ELEMENT FOR NODE COUNT HERE
@@ -279,6 +281,113 @@ function readFilesAsText(files) {
   return Promise.all(promises).then((chunks) => chunks.join("\n---\n"));
 }
 
+function downloadFile(data, fileName, mimeType) {
+  const blob = new Blob([data], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportGraphAsPng() {
+  if (!cy) {
+    alert("Build a graph first before exporting.");
+    return;
+  }
+  const pngDataUrl = cy.png({
+    full: true,
+    scale: 2,
+    bg: "#ffffff"
+  });
+
+  const link = document.createElement("a");
+  link.href = pngDataUrl;
+  link.download = "k8s-dependency-graph.png";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function exportGraphAsSvg() {
+  if (!cy) {
+    alert("Build a graph first before exporting.");
+    return;
+  }
+
+  // quick manual SVG export so we don't need extra plugins
+  const width = 1200;
+  const height = 900;
+  const eles = cy.elements();
+  const bbox = eles.boundingBox();
+  const padding = 80;
+  const usableW = width - padding * 2;
+  const usableH = height - padding * 2;
+  const graphW = Math.max(1, bbox.w);
+  const graphH = Math.max(1, bbox.h);
+  const scale = Math.min(usableW / graphW, usableH / graphH);
+
+  function project(pos) {
+    return {
+      x: padding + (pos.x - bbox.x1) * scale,
+      y: padding + (pos.y - bbox.y1) * scale
+    };
+  }
+
+  const edgeParts = [];
+  cy.edges().forEach((edge) => {
+    const src = project(edge.source().position());
+    const tgt = project(edge.target().position());
+    const label = String(edge.data("label") || "");
+    const midX = (src.x + tgt.x) / 2;
+    const midY = (src.y + tgt.y) / 2;
+
+    edgeParts.push(
+      `<line x1="${src.x.toFixed(2)}" y1="${src.y.toFixed(2)}" x2="${tgt.x.toFixed(2)}" y2="${tgt.y.toFixed(2)}" stroke="#94a3b8" stroke-width="2" />`
+    );
+
+    if (label) {
+      edgeParts.push(
+        `<text x="${midX.toFixed(2)}" y="${(midY - 6).toFixed(2)}" text-anchor="middle" font-size="10" fill="#475569">${escapeXml(label)}</text>`
+      );
+    }
+  });
+
+  const nodeParts = [];
+  cy.nodes().forEach((node) => {
+    const p = project(node.position());
+    const label = String(node.data("label") || "").split("\n");
+
+    nodeParts.push(
+      `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="22" fill="#38bdf8" stroke="#0f172a" stroke-width="1" />`
+    );
+    nodeParts.push(
+      `<text x="${p.x.toFixed(2)}" y="${(p.y + 34).toFixed(2)}" text-anchor="middle" font-size="11" fill="#0f172a">${escapeXml(label.join(" "))}</text>`
+    );
+  });
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  ${edgeParts.join("\n  ")}
+  ${nodeParts.join("\n  ")}
+</svg>`;
+
+  downloadFile(svg, "k8s-dependency-graph.svg", "image/svg+xml;charset=utf-8");
+}
+
+function escapeXml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 async function runBuilder() {
   try {
     let textBlob = yamlText.value.trim();
@@ -394,6 +503,8 @@ function clearGraph() {
 buildGraphBtn.addEventListener("click", runBuilder);
 sampleBtn.addEventListener("click", loadSampleYaml);
 clearBtn.addEventListener("click", clearGraph);
+exportPngBtn.addEventListener("click", exportGraphAsPng);
+exportSvgBtn.addEventListener("click", exportGraphAsSvg);
 
 // little convenience so page isn't empty -->
 loadSampleYaml();
